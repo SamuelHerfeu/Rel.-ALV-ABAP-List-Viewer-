@@ -1,0 +1,49 @@
+
+"Declaração de dados
+DATA: lt_pedidos TYPE TABLE OF vbak,
+      gr_table   TYPE REF TO cl_salv_table.
+
+"Parâmetros de entrada
+PARAMETERS: p_client TYPE kunnr,
+            p_dt_ini TYPE sy-datum,
+            p_dt_fim TYPE sy-datum.
+
+"AT SELECTION-SCREEN - Validações
+
+AT SELECTION-SCREEN.
+  "Valida se a data inicial é maior que a final
+  IF p_dt_ini > p_dt_fim.
+    MESSAGE 'Data inicial não pode ser maior que a data final!' TYPE 'E'.
+  ENDIF.
+
+  "START-OF-SELECTION - Seleção de dados
+
+START-OF-SELECTION.
+  SELECT * INTO TABLE lt_pedidos
+    FROM vbak
+  WHERE kunnr = p_client
+  AND erdat BETWEEN p_dt_ini AND p_dt_fim.
+
+  IF lt_pedidos IS INITIAL.
+    MESSAGE 'Nenhum pedido encontrado para os filtros fornecidos.' TYPE 'I'.
+    LEAVE PROGRAM.
+  ENDIF.
+
+  "Chamando o FORM para exibir o ALV
+  PERFORM display_alv.
+
+  "FORM para exibição do ALV
+FORM display_alv.
+  TRY.
+      cl_salv_table=>factory(
+        IMPORTING
+          r_salv_table = gr_table
+        CHANGING
+          t_table      = lt_pedidos ).
+
+      gr_table->get_columns( )->set_optimize( abap_true ).
+      gr_table->display( ).
+    CATCH cx_salv_msg INTO DATA(lx_msg).
+      MESSAGE lx_msg->get_text( ) TYPE 'E'.
+  ENDTRY.
+ENDFORM.
